@@ -1,11 +1,11 @@
 {
-    "name": "cursorCharCode",
-    "displayName": "Unicode code point of current character",
-    "description": "Shows the Unicode code point of character under cursor in the status bar.",
-    "version": "0.1.1",
-    "publisher": "zeithaste",
+    "name": "cursor-charcode",
+    "displayName": "Here Unicode Checker",
+    "description": "Shows the Unicode code point of character under cursor in the status bar. And more encoding information.",
+    "version": "0.9.0",
+    "publisher": "buttaiwan",
     "engines": {
-        "vscode": "^1.17.0"
+        "vscode": "^1.35.0"
     },
     "categories": [
         "Other"
@@ -16,17 +16,25 @@
     },
     "keywords": [
         "Unicode",
+        "UTF-8",
+        "UTF-16",
+        "Glyphs",
+        "encoding",
+        "charset",
+        "CJK",
+        "Eastern Asia",
+        "font",
         "character",
         "cursor"
     ],
+    "icon": "resource/icon.png",
     "repository": {
         "type": "git",
-        "url": "https://github.com/zeithaste/cursorCharCode.git"
+        "url": "https://github.com/ButTaiwan/cursorCharCode"
     },
     "license": "SEE LICENSE IN LICENSE.txt",
     "bugs": {
-        "url": "https://github.com/zeithaste/cursorCharCode/issues",
-        "email": "zeithaste@gmail.com"
+        "url": "https://github.com/ButTaiwan/cursorCharCode/issues"
     },
     "activationEvents": [
         "*"
@@ -41,27 +49,11 @@
     },
     "devDependencies": {
         "typescript": "^2.5.3",
-        "vscode": "^1.1.5",
+        "@types/vscode": "^1.35.0",
         "@types/node": "^7.0.43",
         "@types/mocha": "^2.2.42"
     },
     "contributes": {
-        "commands": [
-            {
-                "category": "CursorCharCode",
-                "command": "cursorCharCode.convertToXX",
-                "title": "Replace character to \\xFF form"
-            },
-            {
-                "category": "CursorCharCode",
-                "command": "cursorCharCode.convertToXXXX",
-                "title": "Replace character to \\uFFFF form"
-            },
-            {
-                "category": "CursorCharCode",
-                "command": "cursorCharCode.convertToXXXXXXXX",
-                "title": "Replace character to \\UFFFFFFFF form"
-            }
-        ]
+        "commands": []
     }
 }

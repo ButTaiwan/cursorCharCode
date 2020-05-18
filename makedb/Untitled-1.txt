@@ -1,0 +1,28 @@
+/*
+{
+	"category": "CursorCharCode",
+	"command": "cursorCharCode.convertToXX",
+	"title": "Replace character to \\xFF form"
+},
+{
+	"category": "CursorCharCode",
+	"command": "cursorCharCode.convertToXXXX",
+	"title": "Replace character to \\uFFFF form"
+},
+{
+	"category": "CursorCharCode",
+}
+注音符號󠇡𨧀1
+ เพลงไทย ชะช่า
+ กำ
+👨🏾‍🦰 Man: kʷ
+U+1F468 U+1F3FE U+200D U+1F9B0 
+U+0E01 U+0E33 
+\u0E0A\u0E48
+\uD83D\uDC68\uD83C\uDFFE\u200D\uD83E\uDDB0
+\xE8\x99\x9F\xF3\xA0\x87\xA1
+&#3652; &#x1F468;&#x1F3FE;&#x200D;&#x1F9B0;
+
+
+console.log([...'F̸̡̢͓̳̜̪̟̳̠̻̖͐̂̍̅̔̂͋͂͐l̸̢̹̣̤̙͚̱͓̖̹̻̣͇͗͂̃̈͝a̸̢̡̬͕͕̰̖͍̮̪̬̍̏̎̕͘ͅv̸̢̛̠̟̄̿i̵̮͌̑ǫ̶̖͓͎̝͈̰̹̫͚͓̠̜̓̈́̇̆̑͜ͅ'].length) //96 😱
+
