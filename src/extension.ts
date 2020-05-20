@@ -2,6 +2,7 @@
 // Import the necessary extensibility types to use in your code below
 import {window, env, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem, Uri, Range, commands, TextEditor, languages, Hover} from 'vscode';
 import * as path from 'path';
+import { totalmem } from 'os';
 
 //let ucd, enc;
 
@@ -19,17 +20,15 @@ function encodeHex(hexs: string[], func: (string) => string) {
 
 function toUTF8(code: number) {
     if (code <= 0x7f) return '\\x' + toHex(code, 2);
+    if (code <= 0x7ff) return '\\x' + toHex((code >> 6) | 0xc0, 2) + '\\x' + toHex((code & 0x3f) | 0x80, 2);
+    if (code <= 0xffff) return '\\x' + toHex((code >> 12) | 0xe0, 2) + 
+        '\\x' + toHex(((code >> 6) & 0x3f) | 0x80, 2) + '\\x' + toHex((code & 0x3f) | 0x80, 2);
+    return '\\x' + toHex((code >> 18) | 0xf0, 2) + '\\x' + toHex(((code >> 12) & 0x3f) | 0x80, 2) +
+        '\\x' + toHex(((code >> 6) & 0x3f) | 0x80, 2) + '\\x' + toHex((code & 0x3f) | 0x80, 2);
 
-    let n = code; 
-    let res = '';
-    while (n > 0x3f) {
-        res = '\\x' + toHex((n & 0x3f) | 0x80, 2) + res;
-        n = n >> 6;
-    }
-
-    if (code >= 0x10000) return '\\x' + toHex((n & 0x07) | 0xf0, 2) + res;
-    if (code >= 0x800) return '\\x' + toHex((n & 0x0f) | 0xe0, 2) + res;
-    return '\\x' + toHex((n & 0x1f) | 0xc0, 2) + res;
+    //if (code >= 0x10000) return '\\x' + toHex((n & 0x07) | 0xf0, 2) + res;
+    //if (code >= 0x800) return '\\x' + toHex((n & 0x0f) | 0xe0, 2) + res;
+    //return '\\x' + toHex((n & 0x1f) | 0xc0, 2) + res;
 }
 
 const cidRangeData = {
@@ -67,8 +66,27 @@ export function activate(context: ExtensionContext) {
                 if (u >= ucd.ranges[rn][0] && u <= ucd.ranges[rn][1]) n = rn;
             }
         }
-        return new Hover(`### ${title}\n## ${c}\n\nU+${u} in *${type}*\n\n${n}`);
+        return new Hover(`${title} **${c}**\n\nU+${u} in *${type}*\n\n**${n}**`);
     };
+
+    let createCharNameList = function() {
+        var res = [];
+        var tmp = {};
+        for (var c in ucd.codes) tmp[c] = ucd.codes[c];
+        for (var c in enc) {
+            if (! enc[c].nn) continue;
+            if (tmp[c]) tmp[c] += ' / ' + enc[c].nn; else tmp[c] = enc[c].nn;
+        }
+        
+        for (var c in tmp) if (c.length == 4)
+            res.push({label: tmp[c] + ' (' + String.fromCodePoint(parseInt(c, 16)) + ')', description: 'U+' + c});
+        for (var c in tmp) if (c.length == 5)
+            res.push({label: tmp[c] + ' (' + String.fromCodePoint(parseInt(c, 16)) + ')', description: 'U+' + c});
+        return res;
+    };
+
+    const charNames = createCharNameList();
+    //console.log(charNames.length);
 
     // Add to a list of disposables which are disposed when this extension is deactivated.
     context.subscriptions.push(controller);
@@ -96,8 +114,8 @@ export function activate(context: ExtensionContext) {
                 { label: encodeHex(hexs, (u) => 'U+' + u + ' '), description: 'Unicode' },
                 { label: encodeDec(decs, (u) => toUTF8(u)), description: 'UTF-8' },
                 { label: encodeHex(shexs, (u) => '\\u' + u), description: 'UTF-16' },
-                { label: encodeDec(decs, (u) => '&#' + u + ';'), description: 'Entity Reference' },
-                { label: encodeHex(hexs, (u) => '&#x' + u + ';'), description: 'Entity Reference' },
+                { label: encodeDec(decs, (u) => '&#' + u + ';'), description: 'HTML Entity Reference' },
+                //{ label: encodeHex(hexs, (u) => '&#x' + u + ';'), description: 'Entity Reference' },
                 { label: encodeURIComponent(chars), description: 'URL Encode' }
             ];
 
@@ -145,14 +163,30 @@ export function activate(context: ExtensionContext) {
                     env.clipboard.writeText(val.label.replace(/, /g, "\n"));
                 //} else if (val.description == 'Open Browser') {
                 //    if (val.label.match(/U\+([0-9A-F]+)/)) 
-                //        commands.executeCommand('vscode.open', Uri.parse('https://unicode-table.com/en/' + RegExp.$1));
+                //        commands.executeCommand('avscode.open', Uri.parse('https://unicode-table.com/en/' + RegExp.$1));
                 } else {
                     env.clipboard.writeText(val.label);
                 }
             }
-        }));
+        })
+    );
 
-        
+    context.subscriptions.push(
+        commands.registerCommand('cursorCharcode.queryUnicodeChar', async () => {
+            let val = await window.showQuickPick(charNames, {placeHolder: 'Input keywords to search character'});
+            if (val) {
+                var editor = window.activeTextEditor;
+                editor.edit(function(edit) {
+                    edit.delete(editor.selection);
+                }).then(function() {
+                    editor.edit(function(edit) {
+                        edit.insert(editor.selection.start, String.fromCodePoint(parseInt(val.description.substring(2), 16)));
+                    });
+                });
+            }
+        })
+    );
+
     context.subscriptions.push(
         languages.registerHoverProvider('*', {
             provideHover(document, position, token) {
@@ -162,32 +196,30 @@ export function activate(context: ExtensionContext) {
                     w = document.getText(r);
                     if (w.match(/&#(\d+);/)) {
                         let u = parseInt(RegExp.$1, 10);
-                        return makeCodeHover(`&amp;#${u};`, toHex(u, 4), 'Entity Reference (Decimal)');
+                        return makeCodeHover(`&amp;#${u};`, toHex(u, 4), 'HTML Entity Reference (Decimal)');
                     } else if (w.match(/&#x([0-9A-F]+);/)) {
                         let u = RegExp.$1;
-                        return makeCodeHover(`&amp;#x${u};`, u, 'Entity Reference (HEX)');
+                        return makeCodeHover(`&amp;#x${u};`, u, 'HTML Entity Reference (HEX)');
                     } 
                 }
 
-                r = document.getWordRangeAtPosition(position, /U\+[0-9A-Fa-f]+/i);
+                r = document.getWordRangeAtPosition(position, /U\+([0-9A-Fa-f]{4,5})/);
                 if (r) {
-                    w = document.getText(r);
-                    if (w.match(/U\+([0-9A-F]{4,5})/i)) {
-                        let u = RegExp.$1;
-                        return makeCodeHover('U+'+u, u, 'Unicode');
-                    }
+                    //w = document.getText(r);
+                    //if (w.match(/U\+([0-9A-F]{4,5})/i)) {
+                    let u = RegExp.$1;
+                    return makeCodeHover('U+'+u, u, 'Unicode');
+                    //}
                 }
 
-                r = document.getWordRangeAtPosition(position, /\\x[2-7][0-9A-F]/i);
+                r = document.getWordRangeAtPosition(position, /\\x([2-7][0-9A-Fa-f])/);
                 if (r) {
-                    w = document.getText(r);
-                    if (w.match(/\\x([2-7][0-9A-F])/i)) {      // ASCII
-                        let u = RegExp.$1;
-                        return makeCodeHover(`\\x${u}`, '00'+u, 'ASCII');
-                    }
+                    //w = document.getText(r);
+                    let u = RegExp.$1;
+                    return makeCodeHover(`\\x${u}`, '00'+u, 'ASCII');
                 }
                 
-                r = document.getWordRangeAtPosition(position, /\\x[C-F][0-9A-F](\\x[89AB][0-9A-F])+/i);
+                r = document.getWordRangeAtPosition(position, /\\x[C-Fc-f][0-9A-Fa-f](\\x[89ABab][0-9A-Fa-f])+/);
                 if (r) {
                     w = document.getText(r);
                     if (w.match(/\\x(F[0-7])\\x([89AB][0-9A-F])\\x([89AB][0-9A-F])\\x([89AB][0-9A-F])/i)) { // UTF-8 (4byte)
@@ -211,24 +243,27 @@ export function activate(context: ExtensionContext) {
                     } 
                 }
 
-                r = document.getWordRangeAtPosition(position, /\\uD[89AB][0-9A-F]{2}\\uD[C-F][0-9A-F]{2}/i);
+                r = document.getWordRangeAtPosition(position, /\\u([Dd][89ABab][0-9A-Fa-f]{2})\\u([Dd][C-Fa-f][0-9A-Fa-f]{2})/);
                 if (r) {
-                    w = document.getText(r);
-                    if (w.match(/\\u(D[89AB][0-9A-F]{2})\\u(D[C-F][0-9A-F]{2})/i)) { // UTF-16 Surrogate Pairs
-                        let b1 = RegExp.$1;
-                        let b2 = RegExp.$2;
-                        let u = (((parseInt(b1, 16) & 0x3ff) << 10)) + (parseInt(b2, 16) & 0x3ff) + 0x10000;
-                        return makeCodeHover(`\\u${b1}\\u${b2}`, u.toString(16), 'UTF-16 Surrogate Pairs');
-                    }
+                    //w = document.getText(r);
+                    let b1 = RegExp.$1;
+                    let b2 = RegExp.$2;
+                    let u = (((parseInt(b1, 16) & 0x3ff) << 10)) + (parseInt(b2, 16) & 0x3ff) + 0x10000;
+                    return makeCodeHover(`\\u${b1}\\u${b2}`, u.toString(16), 'UTF-16 Surrogate Pairs');
                 }
 
-                r = document.getWordRangeAtPosition(position, /\\u[0-9A-F]{4}/i);
+                r = document.getWordRangeAtPosition(position, /\\u([0-9A-Fa-f]{4})/);
                 if (r) {
-                    w = document.getText(r);
-                    if (w.match(/\\u([0-9A-F]{4})/i)) { // UTF-16 BMP
-                        let u = RegExp.$1;
-                        return makeCodeHover(`\\u${u}`, u, 'UTF-16 BMP');
-                    }
+                    //w = document.getText(r);
+                    let u = RegExp.$1;
+                    return makeCodeHover(`\\u${u}`, toHex(parseInt(u, 16), 4), 'UTF-16 BMP');
+                }
+
+                r = document.getWordRangeAtPosition(position, /\\U([0-9A-Fa-f]{8})/);
+                if (r) {
+                    //w = document.getText(r);
+                    let u = RegExp.$1;
+                    return makeCodeHover(`\\U${u}`, u, 'UTF-32');
                 }
                 
                 return null;

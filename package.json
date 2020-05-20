@@ -1,8 +1,8 @@
 {
     "name": "cursor-charcode",
-    "displayName": "Here Unicode Checker",
+    "displayName": "Here Unicode Mate",
     "description": "Shows the Unicode code point of character under cursor in the status bar. And more encoding information.",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "publisher": "buttaiwan",
     "engines": {
         "vscode": "^1.35.0"
@@ -22,9 +22,9 @@
         "encoding",
         "charset",
         "CJK",
-        "Eastern Asia",
         "font",
         "character",
+        "emoji",
         "cursor"
     ],
     "icon": "resource/icon.png",
@@ -54,6 +54,13 @@
         "@types/mocha": "^2.2.42"
     },
     "contributes": {
+        "keybindings":[
+            {
+                "command": "cursorCharcode.queryUnicodeChar",
+                "key": "ctrl+i",
+                "mac": "cmd+i"
+            }
+        ],
         "commands": []
     }
 }
