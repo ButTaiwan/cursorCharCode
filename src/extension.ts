@@ -62,14 +62,27 @@ export function activate(context: ExtensionContext) {
         if (ucd.codes[u]) {
             n = ucd.codes[u];
         } else {
-            for (var rn in ucd.ranges) {
-                if (u >= ucd.ranges[rn][0] && u <= ucd.ranges[rn][1]) n = rn;
+            for (var i in ucd.ranges) {
+                if (u >= ucd.ranges[i].start && u <= ucd.ranges[i].end) n = ucd.ranges[i].name;
+                //if (u >= ucd.ranges[rn][0] && u <= ucd.ranges[rn][1]) n = rn;
             }
         }
         return new Hover(`${title} **${c}**\n\nU+${u} in *${type}*\n\n**${n}**`);
     };
 
+    function toNameItem(c:string, str:string, note:string) {
+        return {label: str + ' (' + String.fromCodePoint(parseInt(c, 16)) + ')', description: 'U+' + c + (note != null ? ' ' + note : '')};
+    }
+
     let createCharNameList = function() {
+        var res = [];
+        for (var c in ucd.codes) res.push(toNameItem(c, ucd.codes[c], null));
+        for (var c in enc) {
+            if (enc[c].nk) res.push(toNameItem(c, enc[c].nk, null));
+            if (enc[c].sk) res.push(toNameItem(c, enc[c].sk, ucd.codes[c] || enc[c].nn || enc[c].nk || null));
+        }
+        return res;
+        /*
         var res = [];
         var tmp = {};
         for (var c in ucd.codes) tmp[c] = ucd.codes[c];
@@ -83,6 +96,7 @@ export function activate(context: ExtensionContext) {
         for (var c in tmp) if (c.length == 5)
             res.push({label: tmp[c] + ' (' + String.fromCodePoint(parseInt(c, 16)) + ')', description: 'U+' + c});
         return res;
+        */
     };
 
     const charNames = createCharNameList();
@@ -120,9 +134,13 @@ export function activate(context: ExtensionContext) {
             ];
 
             let nameList = encodeHex(hexs, (u) => {
-                if (ucd.codes[u]) return ' / ' + ucd.codes[u];
-                for (var rn in ucd.ranges) {
-                    if (u >= ucd.ranges[rn][0] && u <= ucd.ranges[rn][1]) return ' / ' + rn;
+                if (ucd.codes[u]) {
+                    return ' / ' + ucd.codes[u];
+                } else {
+                    for (var i in ucd.ranges) {
+                        if (u >= ucd.ranges[i].start && u <= ucd.ranges[i].end) return ' / ' + ucd.ranges[i].name;
+                        //if (u >= ucd.ranges[rn][0] && u <= ucd.ranges[rn][1]) return ' / ' + rn;
+                    }
                 }
             });
             list.push({ label: nameList.substring(3), description: 'Unicode Name' });
@@ -147,11 +165,12 @@ export function activate(context: ExtensionContext) {
 
             let glist = encodeHex(hexs, (u) => {
                 if (enc[u] && enc[u].nn) return ', ' + enc[u].nn;
+                if (enc[u] && enc[u].nk) return ', ' + enc[u].nk;
                 if (u.length == 4 && u >= 'FE00' && u <= 'FE0f') return '';     // Variation Selectors (SVS)
                 if (u.length == 5 &&u >= 'E0100' && u <= 'E01EF') return '';    // Variation Selectors Supplement (IVS)
                 return u.length == 4 ? ', uni' + u : ', u' + u;
             });
-            list.push({ label: glist.substring(2), description: 'Glyphs Nice Name' });
+            if (glist.length > 0) list.push({ label: glist.substring(2), description: 'Glyphs Nice Name' });
             //for (var i in hexs) {
             //    list.push({ label: "More about U+" + hexs[i] + "...", description: 'Open Browser' });
             //}
